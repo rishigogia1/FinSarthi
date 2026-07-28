@@ -1,0 +1,66 @@
+# -------------------------------------------------------
+# FinSarthi Backend — Local Development Stack
+# -------------------------------------------------------
+# Usage:
+#   docker compose up        — start all services
+#   docker compose up -d     — start detached
+#   docker compose down -v   — stop and remove volumes
+# -------------------------------------------------------
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./temp_imports:/app/temp_imports
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: finsarthi
+      POSTGRES_PASSWORD: finsarthi
+      POSTGRES_DB: finsarthi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finsarthi"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8100:8000"
+    volumes:
+      - chromadata:/chroma/chroma
+    environment:
+      ANONYMIZED_TELEMETRY: "false"
+
+volumes:
+  pgdata:
+  redisdata:
+  chromadata:
